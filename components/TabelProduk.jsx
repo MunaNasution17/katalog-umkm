@@ -1,7 +1,15 @@
 import { formatRupiah } from "@/lib/format";
 import Tombol from "@/components/Tombol";
 
-export default function TabelProduk({ daftarProduk }) {
+export default function TabelProduk({ daftarProduk = [] }) {
+  if (!daftarProduk || daftarProduk.length === 0) {
+    return (
+      <div className="rounded-2xl border border-garis bg-permukaan p-8 text-center text-teks-lembut">
+        Belum ada produk
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-garis">
       <table className="w-full min-w-[560px] text-left text-sm">
