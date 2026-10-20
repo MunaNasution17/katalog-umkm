@@ -175,3 +175,96 @@ export async function tambahProduk(prevStateOrFormData, maybeFormData) {
 }
 
 export const createProduct = tambahProduk;
+
+// US-09: Ubah data produk yang sudah ada
+export async function ubahProduk(arg1, arg2, arg3) {
+  let boundId = null;
+  let formData;
+
+  if (arg3 instanceof FormData) {
+    boundId = arg1;
+    formData = arg3;
+  } else if (arg2 instanceof FormData) {
+    formData = arg2;
+  } else if (arg1 instanceof FormData) {
+    formData = arg1;
+  } else {
+    formData = arg2 || arg1;
+  }
+
+  const id = boundId || formData?.get?.("id")?.toString();
+  const nama = formData?.get?.("nama")?.toString().trim();
+  const harga = formData?.get?.("harga")?.toString().trim();
+  const kategori = formData?.get?.("kategori")?.toString().trim();
+  const foto_url = formData?.get?.("foto_url")?.toString().trim();
+  const deskripsi = formData?.get?.("deskripsi")?.toString().trim();
+
+  // 1. Validasi ID
+  if (!id) {
+    return { error: "ID produk tidak valid." };
+  }
+
+  // 2. Validasi input di server
+  if (!nama) {
+    return { error: "Nama produk wajib diisi." };
+  }
+
+  const hargaAngka = Number(harga);
+  if (!harga || isNaN(hargaAngka) || hargaAngka < 0) {
+    return { error: "Harga produk harus berupa angka dan tidak boleh kurang dari 0." };
+  }
+
+  // 3. Inisialisasi klien admin
+  let supabase;
+  try {
+    supabase = await buatKlienAdmin();
+  } catch (err) {
+    return { error: err.message || "Konfigurasi Supabase belum lengkap." };
+  }
+
+  // 4. Wajib periksa di server bahwa admin sudah login (Aturan Keamanan 3)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      error: "Sesi login tidak valid atau sudah kedaluwarsa. Silakan login kembali.",
+    };
+  }
+
+  // 5. Perbarui data produk di database Supabase
+  const { data: updatedData, error: updateError } = await supabase
+    .from("produk")
+    .update({
+      nama,
+      harga: Math.round(hargaAngka),
+      kategori: kategori || null,
+      foto_url: foto_url || null,
+      deskripsi: deskripsi || null,
+    })
+    .eq("id", id)
+    .select();
+
+  if (updateError) {
+    return {
+      error: updateError.message || "Gagal memperbarui produk di database.",
+    };
+  }
+
+  if (!updatedData || updatedData.length === 0) {
+    return { error: "Produk yang ingin diubah tidak ditemukan di database." };
+  }
+
+  // 6. Perbarui cache halaman
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/produk/${id}`);
+  revalidatePath(`/admin/produk/${id}/ubah`);
+
+  // 7. Kembali ke halaman /admin
+  redirect("/admin");
+}
+
+export const updateProduct = ubahProduk;

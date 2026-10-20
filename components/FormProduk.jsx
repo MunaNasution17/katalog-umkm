@@ -17,6 +17,7 @@ export default function FormProduk({ produk = {}, labelTombol = "Simpan", action
           {state.error}
         </p>
       )}
+      {produk.id && <input type="hidden" name="id" value={produk.id} />}
       <Input label="Nama produk" name="nama" defaultValue={produk.nama} required />
       <Input
         label="Harga (Rp)"
