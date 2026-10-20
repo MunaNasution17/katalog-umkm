@@ -53,3 +53,56 @@ export async function logout() {
 
 export const keluar = logout;
 
+export async function gantiPassword(prevStateOrFormData, maybeFormData) {
+  const formData =
+    maybeFormData instanceof FormData ? maybeFormData : prevStateOrFormData;
+
+  const passwordBaru = formData.get("password_baru")?.toString() || "";
+  const konfirmasiPassword =
+    formData.get("konfirmasi_password")?.toString() || "";
+
+  if (!passwordBaru || !konfirmasiPassword) {
+    return { error: "Semua kolom password wajib diisi." };
+  }
+
+  // Validasi di server: password baru minimal 8 karakter
+  if (passwordBaru.length < 8) {
+    return { error: "Password baru minimal 8 karakter." };
+  }
+
+  // Validasi di server: harus sama dengan konfirmasi
+  if (passwordBaru !== konfirmasiPassword) {
+    return { error: "Password baru dan konfirmasi password harus sama." };
+  }
+
+  let supabase;
+  try {
+    supabase = await buatKlienAdmin();
+  } catch (err) {
+    return { error: err.message || "Konfigurasi Supabase belum lengkap." };
+  }
+
+  // Wajib periksa di server bahwa admin sudah login (Aturan Keamanan 3)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      error: "Sesi login tidak valid atau sudah kedaluwarsa. Silakan login kembali.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: passwordBaru,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: "Password berhasil diganti." };
+}
+
+export const changePassword = gantiPassword;
